@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -15,6 +16,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const { push } = useRouter();
   const [error, setError] = useState("");
   const {
@@ -28,7 +30,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       const res = await axios.post("http://localhost:5005/auth/login", data);
-      localStorage.setItem("token", res.data.token);
+      login(res.data.token);
       push("/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed");

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -15,6 +16,7 @@ const signupSchema = z.object({
 type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  const { push } = useRouter();
   const [error, setError] = useState("");
   const {
     register,
@@ -31,6 +33,7 @@ export default function SignupPage() {
         data
       );
       console.log(response.data);
+      push("/login");
       if (response.data.success) {
         window.location.href = "/login";
       }
