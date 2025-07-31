@@ -26,7 +26,8 @@ export default function Navbar() {
 
         {user?.role === "user" && (
           <>
-            <Link href="user/myprojects">My Projects</Link>
+            <Link href="/user/createProject">Create Project</Link>
+            <Link href="/user/myprojects">My Projects</Link>
           </>
         )}
       </div>
