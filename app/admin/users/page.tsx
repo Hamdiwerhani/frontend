@@ -25,6 +25,25 @@ export default function AdminUserListPage() {
       .catch((err) => setError(err.message));
   }, [token, user]);
 
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      const res = await fetch(`http://localhost:5005/users/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete user");
+
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
     <RoleProtectedRoute allowedRoles={["admin"]}>
       <div className="p-4">
@@ -48,6 +67,24 @@ export default function AdminUserListPage() {
                 <strong>Joined:</strong>{" "}
                 {new Date(u.createdAt).toLocaleDateString()}
               </p>
+              <button
+                className="text-blue-600 mr-4"
+                onClick={() => router.push(`/admin/users/${u._id}`)}
+              >
+                View
+              </button>
+              <button
+                className="text-blue-600 mr-4"
+                onClick={() => router.push(`/admin/users/${u._id}/edit`)}
+              >
+                Edit
+              </button>
+              <button
+                className="text-red-600"
+                onClick={() => handleDelete(u._id)}
+              >
+                Delete
+              </button>
             </li>
           ))}
         </ul>

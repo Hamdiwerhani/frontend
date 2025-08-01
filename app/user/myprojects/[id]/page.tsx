@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 
-export default function ProjectDetails({ params }: { params: { id: string } }) {
+export default function ProjectDetails() {
+  const { id } = useParams();
   const { token } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<any>(null);
@@ -16,7 +17,7 @@ export default function ProjectDetails({ params }: { params: { id: string } }) {
       return;
     }
 
-    fetch(`http://localhost:5005/projects/${params.id}`, {
+    fetch(`http://localhost:5005/projects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -25,7 +26,7 @@ export default function ProjectDetails({ params }: { params: { id: string } }) {
       })
       .then(setProject)
       .catch((err) => setError(err.message));
-  }, [params.id, token]);
+  }, [id, token]);
 
   if (error) return <p className="text-red-500">{error}</p>;
   if (!project) return <p>Loading project...</p>;
@@ -38,8 +39,7 @@ export default function ProjectDetails({ params }: { params: { id: string } }) {
         <strong>Status:</strong> {project.status}
       </p>
       <p className="text-sm mb-2">
-        <strong>Owner:</strong> {project.owner?.username} (
-        {project.owner?.email})
+        <strong>Owner:</strong> {project.owner?.name} ({project.owner?.email})
       </p>
       {project.tags?.length > 0 && (
         <p className="text-sm text-gray-600">

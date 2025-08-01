@@ -15,6 +15,7 @@ export default function Navbar() {
           <>
             <Link href="/admin/users">Manage Users</Link>
             <Link href="/admin/settings">Admin Settings</Link>
+            <Link href="/admin/projects">All Projects</Link>
           </>
         )}
 

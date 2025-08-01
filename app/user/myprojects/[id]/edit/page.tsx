@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 
-export default function EditProject({ params }: { params: { id: string } }) {
+export default function EditProject() {
+  const { id } = useParams();
   const { token } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<any>(null);
@@ -19,7 +20,7 @@ export default function EditProject({ params }: { params: { id: string } }) {
   useEffect(() => {
     if (!token) return;
 
-    fetch(`http://localhost:5005/projects/${params.id}`, {
+    fetch(`http://localhost:5005/projects/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -36,7 +37,7 @@ export default function EditProject({ params }: { params: { id: string } }) {
         });
       })
       .catch((err) => setError(err.message));
-  }, [params.id, token]);
+  }, [id, token]);
 
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -45,7 +46,7 @@ export default function EditProject({ params }: { params: { id: string } }) {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
 
-    const res = await fetch(`http://localhost:5005/projects/${params.id}`, {
+    const res = await fetch(`http://localhost:5005/projects/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -61,7 +62,7 @@ export default function EditProject({ params }: { params: { id: string } }) {
       const { message } = await res.json();
       setError(message || "Update failed");
     } else {
-      router.push(`/user/myprojects/${params.id}`);
+      router.push(`/user/myprojects/${id}`);
     }
   };
 
