@@ -1,7 +1,7 @@
 "use client";
 
 import CreateProjectForm from "@/app/components/CreateProjectForm";
-import RoleProtectedRoute from "@/app/components/RoleProtectedRoute";
+import RoleProtectedRoute from "@/app/context/RoleProtectedRoute";
 
 export default function CreateProjectPage() {
   return (

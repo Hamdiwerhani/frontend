@@ -1,4 +1,4 @@
-import RoleProtectedRoute from "@/app/components/RoleProtectedRoute";
+import RoleProtectedRoute from "@/app/context/RoleProtectedRoute";
 
 export default function settings() {
   return (

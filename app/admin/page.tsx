@@ -1,6 +1,6 @@
 "use client";
 
-import RoleProtectedRoute from "../components/RoleProtectedRoute";
+import RoleProtectedRoute from "../context/RoleProtectedRoute";
 
 export default function AdminPage() {
   return (

@@ -1,55 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/app/store/store";
+import { fetchProjectById, transferOwnership } from "@/app/slices/projectSlice";
 import { useAuth } from "@/app/context/AuthContext";
+import { fetchUsers } from "@/app/slices/userSlice";
 
-export default function EditProjectPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { token } = useAuth();
+export default function EditProjectPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const [project, setProject] = useState<any>(null);
-  const [users, setUsers] = useState<any[]>([]);
-  const [error, setError] = useState("");
+  const dispatch = useDispatch<AppDispatch>();
+  const { token } = useAuth();
+
+  const {
+    project,
+    status: projectStatus,
+    error: projectError,
+  } = useSelector((state: RootState) => state.project);
+  const {
+    users,
+    status: usersStatus,
+    error: usersError,
+  } = useSelector((state: RootState) => state.user);
+
   const [form, setForm] = useState({ newOwnerId: "" });
 
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
+    if (id && token) {
+      dispatch(fetchProjectById({ id: id as string, token }));
     }
+    if (token) {
+      dispatch(fetchUsers(token));
+    }
+  }, [token, id, dispatch]);
 
-    const fetchData = async () => {
-      try {
-        // Fetch project details
-        const resProject = await fetch(
-          `http://localhost:5005/projects/${params.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!resProject.ok) throw new Error("Failed to load project.");
-        const proj = await resProject.json();
-        setProject(proj);
-        setForm({ newOwnerId: proj.owner?._id || "" });
-
-        // Fetch users
-        const resUsers = await fetch("http://localhost:5005/users", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!resUsers.ok) throw new Error("Failed to load users.");
-        const allUsers = await resUsers.json();
-        setUsers(allUsers);
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-
-    fetchData();
-  }, [token, params.id, router]);
+  useEffect(() => {
+    if (project && project.owner?._id) {
+      setForm({ newOwnerId: project.owner._id });
+    }
+  }, [project]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setForm({ ...form, newOwnerId: e.target.value });
@@ -57,28 +48,21 @@ export default function EditProjectPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const res = await fetch(
-        `http://localhost:5005/projects/${params.id}/transfer-owner`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ newOwnerId: form.newOwnerId }),
-        }
-      );
+    await dispatch(
+      transferOwnership({
+        projectId: id as string,
+        newOwnerId: form.newOwnerId,
+        token: token!,
+      })
+    );
 
-      if (!res.ok) throw new Error("Transfer failed.");
-      router.push("/admin/projects");
-    } catch (err: any) {
-      setError(err.message);
-    }
+    router.push("/admin/projects");
   };
 
-  if (error) return <p className="text-red-500">{error}</p>;
-  if (!project) return <p>Loading project...</p>;
+  if (projectStatus === "loading" || usersStatus === "loading")
+    return <p>Loading...</p>;
+  if (projectError || usersError)
+    return <p className="text-red-500">{projectError || usersError}</p>;
 
   return (
     <div className="max-w-3xl mx-auto p-6">

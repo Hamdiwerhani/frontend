@@ -1,71 +1,64 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import RoleProtectedRoute from "@/app/components/RoleProtectedRoute";
+import RoleProtectedRoute from "@/app/context/RoleProtectedRoute";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/app/store/store";
+import { fetchUserById, updateUser } from "@/app/slices/userSlice";
+
+const userSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email"),
+  role: z.enum(["admin", "manager", "user"]),
+});
+type UserForm = z.infer<typeof userSchema>;
 
 export default function EditUserPage() {
   const { token } = useAuth();
-  const router = useRouter();
   const { id } = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    role: "",
+  const { user, status, error } = useSelector((state: RootState) => state.user);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
   });
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`http://localhost:5005/users/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+    if (typeof id === "string" && token) {
+      dispatch(fetchUserById({ id, token }));
+    }
+  }, [id, token, dispatch]);
 
-        if (!res.ok) throw new Error("Failed to fetch user");
+  useEffect(() => {
+    if (user) {
+      setValue("name", user.name);
+      setValue("email", user.email);
+      setValue("role", user.role as "admin" | "manager" | "user");
+    }
+  }, [user, setValue]);
 
-        const data = await res.json();
-        setForm({
-          name: data.name || "",
-          email: data.email || "",
-          role: data.role || "",
-        });
-      } catch (err) {
-        console.error(err);
-        alert("Error fetching user.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (typeof id === "string" && token) fetchUser();
-    console.log("Fetched id from params:", id);
-  }, [id, token]);
+  const onSubmit = async (data: UserForm) => {
+    if (!token || typeof id !== "string") return;
+    const resultAction = await dispatch(updateUser({ id, data, token }));
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`http://localhost:5005/users/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(form),
-      });
-      console.log(form);
-      if (!res.ok) throw new Error("Failed to update user");
-
+    if (updateUser.fulfilled.match(resultAction)) {
       router.push("/admin/users");
-    } catch (err) {
-      alert("Error updating user: " + err.message);
     }
   };
 
-  if (loading) {
+  if (status === "loading") {
     return <div className="text-center mt-20 text-gray-600">Loading...</div>;
   }
 
@@ -73,47 +66,49 @@ export default function EditUserPage() {
     <RoleProtectedRoute allowedRoles={["admin"]}>
       <div className="max-w-xl mx-auto mt-12">
         <h1 className="text-2xl font-bold mb-6">Edit User</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium">Name</label>
             <input
               className="w-full border rounded p-2"
               type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
+              {...register("name")}
             />
+            {errors.name && (
+              <p className="text-red-500">{errors.name.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium">Email</label>
             <input
               className="w-full border rounded p-2"
               type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
+              {...register("email")}
             />
+            {errors.email && (
+              <p className="text-red-500">{errors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium">Role</label>
-            <select
-              className="w-full border rounded p-2"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
-              required
-            >
+            <select className="w-full border rounded p-2" {...register("role")}>
               <option value="">Select role</option>
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
               <option value="user">User</option>
             </select>
+            {errors.role && (
+              <p className="text-red-500">{errors.role.message}</p>
+            )}
           </div>
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            disabled={isSubmitting}
           >
-            Save Changes
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
+          {error && <p className="text-red-500 mt-2">{error}</p>}
         </form>
       </div>
     </RoleProtectedRoute>

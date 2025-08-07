@@ -1,67 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import RoleProtectedRoute from "@/app/components/RoleProtectedRoute";
+import RoleProtectedRoute from "@/app/context/RoleProtectedRoute";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/app/store/store";
+import { fetchUserById } from "@/app/slices/userSlice";
 
 export default function ViewUserPage() {
+  const dispatch = useDispatch<AppDispatch>();
   const { id } = useParams();
   const { token } = useAuth();
 
-  const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const { user, status, error } = useSelector((state: RootState) => state.user);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`http://localhost:5005/users/${id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) throw new Error("Failed to fetch user");
-
-        const data = await res.json();
-        setUser(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id && token) fetchUser();
+    if (token && id) {
+      dispatch(fetchUserById({ id: id as string, token }));
+    }
   }, [id, token]);
-
-  if (loading) return <div className="text-center mt-8">Loading...</div>;
-  if (error) return <div className="text-red-600 mt-8">{error}</div>;
 
   return (
     <RoleProtectedRoute allowedRoles={["admin"]}>
       <div className="max-w-xl mx-auto mt-12">
         <h1 className="text-2xl font-bold mb-6">User Details</h1>
-        <div className="space-y-2 border rounded p-4 shadow">
-          <p>
-            <strong>Name:</strong> {user.name}
-          </p>
-          <p>
-            <strong>Email:</strong> {user.email}
-          </p>
-          <p>
-            <strong>Role:</strong> {user.role}
-          </p>
-          <p>
-            <strong>Created At:</strong>{" "}
-            {new Date(user.createdAt).toLocaleString()}
-          </p>
-          <p>
-            <strong>Updated At:</strong>{" "}
-            {new Date(user.updatedAt).toLocaleString()}
-          </p>
-        </div>
+
+        {status === "loading" && <p>Loading...</p>}
+        {error && <p className="text-red-500">Error: {error}</p>}
+
+        {user && (
+          <div className="space-y-2 border rounded p-4 shadow">
+            <p>
+              <strong>Name:</strong> {user.name}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.email}
+            </p>
+            <p>
+              <strong>Role:</strong> {user.role}
+            </p>
+          </div>
+        )}
       </div>
     </RoleProtectedRoute>
   );

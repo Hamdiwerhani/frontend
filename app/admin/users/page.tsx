@@ -3,54 +3,53 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
-import RoleProtectedRoute from "@/app/components/RoleProtectedRoute";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUsers, deleteUser } from "@/app/slices/userSlice";
+import RoleProtectedRoute from "@/app/context/RoleProtectedRoute";
+import { AppDispatch, RootState } from "@/app/store/store";
+import AlertPopup from "@/app/components/AlertPopup";
 
 export default function AdminUserListPage() {
-  const { user, token } = useAuth();
+  const [popup, setPopup] = useState<{
+    open: boolean;
+    message: string;
+    type: "error" | "success";
+  }>({
+    open: false,
+    message: "",
+    type: "error",
+  });
+  const { token } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState([]);
-  const [error, setError] = useState("");
+  const dispatch = useDispatch<AppDispatch>();
+  const { users, error, status } = useSelector(
+    (state: RootState) => state.user
+  );
 
   useEffect(() => {
-    fetch("http://localhost:5005/users", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch users");
-        return res.json();
-      })
-      .then(setUsers)
-      .catch((err) => setError(err.message));
-  }, [token, user]);
+    if (token) dispatch(fetchUsers(token));
+  }, [token, dispatch]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user?")) return;
-
-    try {
-      const res = await fetch(`http://localhost:5005/users/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error("Failed to delete user");
-
-      setUsers((prev) => prev.filter((u) => u._id !== id));
-    } catch (err) {
-      alert(err.message);
-    }
+  const handleDelete = (id: string) => {
+    if (token) dispatch(deleteUser({ id, token }));
+    setPopup({
+      open: true,
+      message: "User deleted successfully!",
+      type: "success",
+    });
   };
 
   return (
     <RoleProtectedRoute allowedRoles={["admin"]}>
+      <AlertPopup
+        message={popup.open ? popup.message : ""}
+        onClose={() => setPopup({ ...popup, open: false })}
+        type={popup.type}
+      />
       <div className="p-4">
         <h1 className="text-2xl font-bold mb-4">All Users</h1>
-
+        {status === "loading" && <p>Loading...</p>}
         {error && <p className="text-red-500">{error}</p>}
-
         <ul className="space-y-2">
           {users.map((u) => (
             <li key={u._id} className="p-3 border rounded shadow">

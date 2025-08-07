@@ -1,69 +1,46 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useParams } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState, AppDispatch } from "@/app/store/store";
+import { fetchUsers } from "@/app/slices/userSlice";
+import { shareProject } from "@/app/slices/projectSlice";
 
 export default function ShareProjectPage() {
   const { token } = useAuth();
-  const params = useParams();
-  const projectId = params?.id as string;
+  const { id } = useParams();
+  const dispatch = useDispatch<AppDispatch>();
+  const { users } = useSelector((state: RootState) => state.user);
+  const { error, status } = useSelector((state: RootState) => state.project);
 
-  const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState("");
   const [permission, setPermission] = useState<"view" | "edit">("view");
-  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    if (!token) return;
-
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch("http://localhost:5005/users", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed to load users");
-        const data = await res.json();
-        setUsers(data);
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-
-    fetchUsers();
-  }, [token]);
+    if (token) dispatch(fetchUsers(token));
+  }, [token, dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setSuccess("");
-
-    try {
-      const res = await fetch(
-        `http://localhost:5005/projects/${projectId}/share`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            userId: selectedUser,
-            permission,
-          }),
-        }
-      );
-
-      if (!res.ok) throw new Error("Failed to share project");
-
+    if (!token || !id) return;
+    const resultAction = await dispatch(
+      shareProject({
+        projectId: id as string,
+        userId: selectedUser,
+        permission,
+        token,
+      })
+    );
+    if (shareProject.fulfilled.match(resultAction)) {
       setSuccess("Project shared successfully!");
-    } catch (err: any) {
-      setError(err.message);
     }
   };
 
-  if (!projectId) return <p className="text-red-500">Project ID missing.</p>;
+  if (status === "loading") return <p>Loading...</p>;
+  if (!id) return <p className="text-red-500">Project ID missing.</p>;
 
   return (
     <form
@@ -72,7 +49,6 @@ export default function ShareProjectPage() {
     >
       {error && <p className="text-red-500">{error}</p>}
       {success && <p className="text-green-500">{success}</p>}
-
       <select
         value={selectedUser}
         onChange={(e) => setSelectedUser(e.target.value)}
@@ -86,7 +62,6 @@ export default function ShareProjectPage() {
           </option>
         ))}
       </select>
-
       <select
         value={permission}
         onChange={(e) => setPermission(e.target.value as "view" | "edit")}
@@ -95,7 +70,6 @@ export default function ShareProjectPage() {
         <option value="view">View</option>
         <option value="edit">Edit</option>
       </select>
-
       <button
         type="submit"
         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"

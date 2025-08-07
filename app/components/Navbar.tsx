@@ -32,10 +32,15 @@ export default function Navbar() {
           </>
         )}
       </div>
-
-      <button onClick={logout} className="btn btn-sm btn-outline">
-        Logout
-      </button>
+      {user ? (
+        <button onClick={logout} className="btn btn-sm btn-outline">
+          Logout
+        </button>
+      ) : (
+        <Link href="/login" className="btn btn-sm btn-outline">
+          Login
+        </Link>
+      )}
     </nav>
   );
 }

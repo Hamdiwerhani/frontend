@@ -1,29 +1,26 @@
 "use client";
 
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import axios from "axios";
-import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../store/store";
+import { createProject } from "../slices/projectSlice";
 
 const projectSchema = z.object({
   name: z.string().min(2, "Project name must be at least 2 characters"),
   description: z.string().optional(),
   status: z.enum(["todo", "in-progress", "done"]),
-  tags: z
-    .string()
-    .optional()
-    .transform((val) => (val ? val.split(",").map((tag) => tag.trim()) : [])),
+  tags: z.string().optional(),
 });
-
 type ProjectForm = z.infer<typeof projectSchema>;
 
 export default function CreateProjectForm() {
   const { token } = useAuth();
+  const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const [error, setError] = useState("");
 
   const {
     register,
@@ -33,16 +30,28 @@ export default function CreateProjectForm() {
     resolver: zodResolver(projectSchema),
   });
 
+  const reduxError = useSelector((state: RootState) => state.project.error);
+
   const onSubmit = async (data: ProjectForm) => {
-    setError("");
-    try {
-      await axios.post("http://localhost:5005/projects", data, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+    if (!token) return;
+
+    const resultAction = await dispatch(
+      createProject({
+        data: {
+          ...data,
+          tags: data.tags
+            ? data.tags
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean)
+            : [],
         },
-      });
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create project");
+        token,
+      })
+    );
+
+    if (createProject.fulfilled.match(resultAction)) {
+      router.push("/user/myprojects");
     }
   };
 
@@ -78,9 +87,6 @@ export default function CreateProjectForm() {
           className="input"
           placeholder="Optional project description"
         />
-        {errors.description && (
-          <p className="text-red-500 text-sm">{errors.description.message}</p>
-        )}
       </div>
 
       <div>
@@ -110,7 +116,7 @@ export default function CreateProjectForm() {
         />
       </div>
 
-      {error && <p className="text-red-500">{error}</p>}
+      {reduxError && <p className="text-red-500 text-sm">{reduxError}</p>}
 
       <button
         type="submit"

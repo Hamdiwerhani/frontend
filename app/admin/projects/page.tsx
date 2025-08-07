@@ -1,44 +1,24 @@
-// ✅ FRONTEND: Updated AllProjectsPage to fetch shared + owned projects
 "use client";
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/app/store/store";
+import { fetchAllAdminProjects } from "@/app/slices/projectSlice";
 
 export default function AllProjectsPage() {
   const { token } = useAuth();
   const router = useRouter();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [error, setError] = useState("");
+  const dispatch = useDispatch<AppDispatch>();
+  const { projects, error, status } = useSelector(
+    (state: RootState) => state.project
+  );
 
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (token) dispatch(fetchAllAdminProjects(token));
+  }, [token, dispatch]);
 
-    const fetchProjects = async () => {
-      try {
-        const res = await fetch("http://localhost:5005/projects/admin/all", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error("Access denied or failed to load projects.");
-        }
-
-        const data = await res.json();
-        setProjects(data.data);
-      } catch (err: any) {
-        setError(err.message);
-      }
-    };
-
-    fetchProjects();
-  }, [token]);
-
+  if (status === "loading") return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
@@ -56,17 +36,16 @@ export default function AllProjectsPage() {
               <strong>Owner:</strong> {project.owner?.name} (
               {project.owner?.email})
             </p>
-            {project.sharedWith?.length > 0 && (
+            {project.sharedWith?.length && project.sharedWith.length > 0 && (
               <div className="mt-4">
                 <p className="text-sm text-gray-500">Shared With:</p>
-                {project.sharedWith.map((entry: any) => (
-                  <p key={entry.user._id} className="text-xs">
-                    {entry.user.email} ({entry.permissions.join(", ")})
+                {project.sharedWith.map((entry) => (
+                  <p key={entry._id} className="text-xs">
+                    {entry.user?.email} ({entry.permissions.join(", ")})
                   </p>
                 ))}
               </div>
             )}
-
             <div className="flex space-x-4 mt-4">
               <button
                 onClick={() =>
@@ -76,7 +55,6 @@ export default function AllProjectsPage() {
               >
                 Edit / Transfer Ownership
               </button>
-
               <button
                 onClick={() =>
                   router.push(`/admin/projects/${project._id}/share`)
